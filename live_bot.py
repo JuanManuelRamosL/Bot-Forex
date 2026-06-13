@@ -27,8 +27,9 @@ def _dir_of(trade):
     return "LONG" if float(trade["currentUnits"]) > 0 else "SHORT"
 
 
-def run_live():
-    cfg = config
+def run_live(cfg=config):
+    poll = getattr(cfg, "POLL_SECONDS", POLL_SECONDS)
+    journal.configure(getattr(cfg, "LOG_FILE", None), getattr(cfg, "TRADES_FILE", None))
     client = MT5Client(cfg.MT5_LOGIN, cfg.MT5_PASSWORD, cfg.MT5_SERVER)
     strat = MeanReversionStrategy(cfg)
 
@@ -176,9 +177,9 @@ def run_live():
             journal.event("Bot detenido por el usuario.")
             break
         except Exception as e:
-            journal.event(f"[error] {e}  -- reintentando en {POLL_SECONDS}s")
+            journal.event(f"[error] {e}  -- reintentando en {poll}s")
 
-        time.sleep(POLL_SECONDS)
+        time.sleep(poll)
 
 
 if __name__ == "__main__":

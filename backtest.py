@@ -15,8 +15,7 @@ from mt5_client import MT5Client
 from engine import simulate
 
 
-def run_backtest():
-    cfg = config
+def run_backtest(cfg=config):
     client = MT5Client(cfg.MT5_LOGIN, cfg.MT5_PASSWORD, cfg.MT5_SERVER)
 
     print(f"Bajando {cfg.BACKTEST_CANDLES} velas de {cfg.INSTRUMENT} ({cfg.GRANULARITY})...")

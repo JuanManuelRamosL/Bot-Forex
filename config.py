@@ -75,4 +75,4 @@ RISK_PER_TRADE  = 0.01        # arriesgar 1% del capital por operación (0.01 = 
 MAX_OPEN_TRADES = 1           # cuántas posiciones simultáneas permitir
 
 # ─── Backtest ─────────────────────────────────────────────────────
-BACKTEST_CANDLES = 15000      # cuántas velas históricas bajar para el backtest
+BACKTEST_CANDLES = 25000      # cuántas velas históricas bajar para el backtest

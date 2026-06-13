@@ -104,6 +104,7 @@ def simulate(cfg, times, highs, lows, closes, capital0=10000.0):
                 trades.append({
                     "time": times[i], "dir": pos["dir"], "entry": pos["entry"],
                     "exit": exit_price, "pnl": gross, "pips": pips, "reason": reason,
+                    "bars": i - pos["entry_i"],
                 })
                 pos = None
 
@@ -126,7 +127,7 @@ def simulate(cfg, times, highs, lows, closes, capital0=10000.0):
                     else:
                         entry = sig["entry"] - half
                         units = -units
-                    pos = {"dir": sig["dir"], "entry": entry,
+                    pos = {"dir": sig["dir"], "entry": entry, "entry_i": i,
                            "sl": sig["sl"], "tp": sig["tp"], "units": units}
         elif not pos and cfg.USE_CIRCUIT_BREAKER and day_blocked:
             if strat.signal_at(i, closes, ind):
@@ -149,15 +150,17 @@ def simulate(cfg, times, highs, lows, closes, capital0=10000.0):
         trades.append({
             "time": times[-1], "dir": pos["dir"], "entry": pos["entry"],
             "exit": exit_price, "pnl": gross, "pips": pips, "reason": "CIERRE_FINAL",
+            "bars": (len(closes) - 1) - pos["entry_i"],
         })
 
-    metrics = compute_metrics(capital0, cash, trades, equity, closes, start)
+    bars_per_day = getattr(cfg, "BARS_PER_DAY", 24)  # H1 = 24 velas/día
+    metrics = compute_metrics(capital0, cash, trades, equity, closes, start, bars_per_day)
     metrics["blocked"] = blocked
     return {"trades": trades, "equity": equity, "final": cash, "metrics": metrics,
             "capital0": capital0, "start": start, "closes": closes}
 
 
-def compute_metrics(capital0, final, trades, equity, closes, start):
+def compute_metrics(capital0, final, trades, equity, closes, start, bars_per_day=24):
     total_ret = (final - capital0) / capital0 * 100
     wins = [t for t in trades if t["pnl"] > 0]
     losses = [t for t in trades if t["pnl"] <= 0]
@@ -179,11 +182,11 @@ def compute_metrics(capital0, final, trades, equity, closes, start):
     if rets:
         mean_r = sum(rets) / len(rets)
         std_r = math.sqrt(sum((r - mean_r) ** 2 for r in rets) / len(rets))
-        sharpe = (mean_r / std_r) * math.sqrt(24 * 365) if std_r else 0
+        sharpe = (mean_r / std_r) * math.sqrt(bars_per_day * 365) if std_r else 0
     else:
         sharpe = 0
 
-    months = len(equity) / (24 * 30) if equity else 0
+    months = len(equity) / (bars_per_day * 30) if equity else 0
     monthly = total_ret / months if months else 0
 
     return {

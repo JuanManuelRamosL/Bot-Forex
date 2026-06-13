@@ -16,6 +16,15 @@ LOG_FILE    = "bot.log"
 TRADES_JSON = "trades.json"
 
 
+def configure(log_file=None, trades_file=None):
+    """Permite que cada bot use sus propios archivos (ej. el bot M15 vs el H1)."""
+    global LOG_FILE, TRADES_JSON
+    if log_file:
+        LOG_FILE = log_file
+    if trades_file:
+        TRADES_JSON = trades_file
+
+
 def _now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
