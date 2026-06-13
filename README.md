@@ -1,95 +1,84 @@
-# Bot de Trading Forex — Mean Reversion (Bollinger Bands)
+# Bot de Trading Forex v2 — Mean Reversion + Filtro de Régimen
 
 Bot de trading algorítmico en Python que se conecta a OANDA. Hace backtesting con
-datos históricos reales y opera automáticamente en cuenta demo (o real, bajo tu responsabilidad).
+datos históricos reales y opera automáticamente en cuenta demo.
 
-**Estrategia:** Mean Reversion con Bandas de Bollinger + filtro RSI + stop-loss dinámico por ATR.
+**Estrategia:** Mean Reversion (Bollinger Bands + RSI) con stop-loss dinámico por ATR.
+
+## Novedades de la v2
+
+1. **Filtro de régimen (ADX):** el bot ya no opera a ciegas. Detecta si el mercado
+   está lateral (donde mean reversion funciona) o en tendencia fuerte (donde es
+   peligroso), y solo abre trades cuando el mercado está lateral.
+2. **Spread real en el backtest:** ahora descuenta el costo del spread en cada
+   operación, así los resultados son honestos y no optimistas.
+3. **Circuit breaker:** si el bot pierde más de un % configurable en un solo día,
+   deja de abrir trades hasta el día siguiente. Protege contra rachas malas.
 
 ---
 
 ## 1. Requisitos
+- Python 3.9+
+- Cuenta demo de OANDA (gratis)
 
-- Python 3.9 o superior
-- Una cuenta demo de OANDA (gratis)
-
-## 2. Conseguir credenciales de OANDA (gratis)
-
-1. Andá a https://www.oanda.com/ y creá una cuenta **Practice / Demo** (dinero virtual).
-2. Una vez dentro, buscá **"Manage API Access"** y generá un **token** (API key).
-3. Anotá tu **Account ID** (tiene formato `101-001-XXXXXXX-001`).
+## 2. Credenciales OANDA (gratis)
+1. Entrá a oanda.com y creá una cuenta **Practice / Demo**.
+2. Buscá **"Manage API Access"** y generá un **token**.
+3. Anotá tu **Account ID** (formato `101-001-XXXXXXX-001`).
 
 ## 3. Instalación
-
 ```bash
-# Descomprimí el proyecto y entrá a la carpeta
-cd forex-bot
+cd forex-bot-v2
+python -m venv venv
+# Windows (Git Bash):
+source venv/Scripts/activate
+# Windows (PowerShell):
+# .\venv\Scripts\Activate.ps1
+# macOS/Linux:
+# source venv/bin/activate
 
-# Instalá la única dependencia
 pip install -r requirements.txt
 ```
 
 ## 4. Configuración
+Abrí `config.py`, pegá tu token y Account ID, y dejá `OANDA_ENV = "practice"`.
+Ahí mismo podés ajustar el filtro de régimen, el spread, y el circuit breaker.
 
-Abrí `config.py` y pegá tus credenciales:
-
-```python
-OANDA_API_TOKEN  = "tu_token_aca"
-OANDA_ACCOUNT_ID = "101-001-XXXXXXX-001"
-OANDA_ENV        = "practice"   # dejalo en practice para demo
-```
-
-Ahí mismo podés ajustar el par (`INSTRUMENT`), el timeframe (`GRANULARITY`),
-el riesgo por operación (`RISK_PER_TRADE`) y los parámetros de la estrategia.
-
-## 5. Correr el backtest (recomendado primero)
-
+## 5. Backtest (hacelo primero)
 ```bash
 python backtest.py
 ```
 
-Baja datos históricos reales de OANDA y te muestra: retorno total, retorno mensual
-estimado, Sharpe ratio, win rate, drawdown máximo y la lista de operaciones.
-**No ejecuta ninguna orden real.**
-
-## 6. Correr el bot en vivo (demo)
-
+## 6. Bot en vivo (demo)
 ```bash
 python live_bot.py
 ```
-
-Con `OANDA_ENV = "practice"` opera con dinero virtual. El bot revisa el mercado cada
-5 minutos, abre y cierra posiciones solo, y manda el stop-loss/take-profit junto con
-cada orden (así tus posiciones quedan protegidas aunque el bot se apague).
-
-Para frenarlo: `Ctrl + C`.
+Frenar con `Ctrl + C`.
 
 ---
 
-## Cómo funciona la estrategia
+## Parámetros nuevos en config.py
 
-| Acción | Condición |
+| Parámetro | Qué hace |
 |---|---|
-| **Comprar (LONG)** | El precio toca o baja de la banda inferior **y** el RSI < 45 (sobreventa) |
-| **Vender (SHORT)** | El precio toca o supera la banda superior **y** el RSI > 55 (sobrecompra) |
-| **Cerrar** | El precio vuelve a la media móvil (objetivo), toca el stop-loss, o el take-profit |
+| `USE_REGIME_FILTER` | Activa/desactiva el filtro de tendencia |
+| `ADX_MAX` | Solo opera si el ADX está por debajo (25 = solo mercados laterales) |
+| `SPREAD_PIPS` | Spread por par, descontado en cada trade del backtest |
+| `USE_CIRCUIT_BREAKER` | Activa/desactiva el freno diario |
+| `MAX_DAILY_LOSS` | % de pérdida diaria que dispara el freno (0.03 = 3%) |
 
-El tamaño de cada posición se calcula para arriesgar exactamente el % que configuraste
-(por defecto 1%), usando el ATR para medir la volatilidad actual.
-
-## Archivos del proyecto
-
-- `config.py` — tus credenciales y todos los parámetros ajustables
-- `strategy.py` — indicadores (Bollinger, ATR, RSI) y lógica de señales
+## Archivos
+- `config.py` — credenciales y todos los parámetros
+- `strategy.py` — indicadores (Bollinger, ATR, RSI, ADX) y lógica de señales
 - `oanda_client.py` — conexión con la API de OANDA
-- `backtest.py` — backtesting con datos históricos reales
+- `backtest.py` — backtesting con spread real y circuit breaker
 - `live_bot.py` — trading automático en vivo
 
 ---
 
-## ⚠️ Advertencias importantes
-
-- **Empezá siempre en demo.** Corré el bot semanas en `practice` antes de pensar en dinero real.
-- **El backtest no garantiza el futuro.** Que haya funcionado en el pasado no significa que funcione mañana.
-- **El riesgo es real.** El trading con apalancamiento puede hacerte perder todo tu capital.
-- **Esto no es asesoramiento financiero.** Es una herramienta educativa. Vos sos responsable de tus decisiones.
-- **No subas `config.py` a GitHub** con tus claves reales. Agregalo a `.gitignore`.
+## ⚠️ Advertencias
+- **Empezá siempre en demo.** Corré semanas en `practice` antes de pensar en real.
+- **El backtest no garantiza el futuro.** Ni siquiera con spread incluido.
+- **El riesgo es real.** El trading apalancado puede hacerte perder todo el capital.
+- **Esto no es asesoramiento financiero.** Es una herramienta educativa.
+- **No subas `config.py` a GitHub** con tus claves reales.
