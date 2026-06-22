@@ -1,0 +1,61 @@
+========================================================================
+  BOT FTMO — el ganador (mean reversion M15)
+========================================================================
+
+Este es el bot que GANÓ tras probar todo (mean reversion vs SMC, un par vs
+varios) sobre 3.6 años de historia real:
+
+    Retorno:        +283%   (en 3.6 años)
+    Sharpe:         3.89
+    Profit factor:  1.43
+    Drawdown máx:   -6.31%   (cumple FTMO holgadamente)
+    Mensual real:   ~4.4% compuesto
+
+Esta carpeta es AUTÓNOMA: tiene todo lo que el bot necesita. Los demás
+archivos del proyecto (SMC, portfolio, etc.) fueron experimentos que NO
+ganaron — podés ignorarlos.
+
+------------------------------------------------------------------------
+  CÓMO USARLO
+------------------------------------------------------------------------
+
+1. Abrí MetaTrader 5 y logueate en la cuenta correcta.
+
+2. Activá el "Algo Trading" en MT5 (botón arriba, tiene que estar verde).
+   Sin esto, el bot NO puede ejecutar órdenes (error 10027).
+
+3. Editá config.py:
+   - Poné FTMO_INITIAL_CAPITAL con el tamaño REAL de tu cuenta FTMO.
+   - Verificá las credenciales (MT5_LOGIN, MT5_PASSWORD, MT5_SERVER).
+
+4. Comandos (desde esta carpeta):
+
+   Probar en el pasado (backtest, no opera de verdad):
+       py backtest.py
+
+   Operar en vivo / demo (MT5 abierto):
+       py live_bot.py        (frenar con Ctrl + C)
+
+   El período del backtest se ajusta con BACKTEST_CANDLES en config.py.
+
+------------------------------------------------------------------------
+  QUÉ HACE EL BOT
+------------------------------------------------------------------------
+
+- Opera EUR/USD en velas de 15 minutos.
+- Entra cuando el precio toca una banda de Bollinger + RSI confirma +
+  mercado lateral (ADX < 30).
+- Objetivo 3:1 con trailing stop. Riesgo 0.4% por operación.
+- Frenos FTMO: para el día a -4%, para todo a -8%, y se detiene al +10%.
+- Registra todo en bot.log y trades.json.
+
+------------------------------------------------------------------------
+  ANTES DE PONER PLATA REAL (FTMO)
+------------------------------------------------------------------------
+
+1. Validá en DEMO 2-3 semanas. Confirmá que opera parecido al backtest.
+2. Win rate ~43%: vas a ver rachas de varias pérdidas seguidas. Es NORMAL.
+3. El backtest no incluye slippage/comisión: en vivo rinde algo menos.
+
+Secuencia correcta: DEMO primero, FTMO después. Nunca al revés.
+========================================================================

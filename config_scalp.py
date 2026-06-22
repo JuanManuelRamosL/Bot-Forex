@@ -56,7 +56,8 @@ RISK_PER_TRADE  = 0.01        # 1% del capital por operación
 MAX_OPEN_TRADES = 1
 
 # ─── Backtest ─────────────────────────────────────────────────────
-BACKTEST_CANDLES = 30000      # ~14 meses de velas M15
+BACKTEST_CANDLES = 90000      # ~14 meses de velas M15
+CAPITAL_INICIAL  = 10000      # capital inicial simulado en el backtest (USD)
 
 # ─── Archivos de registro (separados del bot H1 para no mezclarlos) ──
 LOG_FILE    = "bot_scalp.log"

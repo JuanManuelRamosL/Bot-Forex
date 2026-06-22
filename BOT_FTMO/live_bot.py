@@ -60,9 +60,14 @@ def run_live(cfg=config):
     ftmo_cap = getattr(cfg, "FTMO_INITIAL_CAPITAL", None)
     max_total = getattr(cfg, "MAX_TOTAL_LOSS", None)
     profit_target = getattr(cfg, "PROFIT_TARGET", None)
+    # Si FTMO_AUTO_STOP = False, el bot NO se apaga solo al tocar el objetivo
+    # (+10%) ni el freno total (-8%): queda corriendo hasta que vos lo frenes.
+    ftmo_auto_stop = getattr(cfg, "FTMO_AUTO_STOP", True)
     if ftmo_cap:
+        modo = "se apaga solo en objetivo/freno" if ftmo_auto_stop \
+            else "NO se apaga solo (frenos automáticos OFF)"
         journal.event(f"MODO FTMO: capital base ${ftmo_cap:,.0f} | "
-                      f"freno total -{max_total*100:.0f}% | objetivo +{profit_target*100:.0f}%")
+                      f"freno total -{max_total*100:.0f}% | objetivo +{profit_target*100:.0f}% | {modo}")
 
     current_day = None
     day_start_equity = float(acc.get("equity", acc["balance"]))
@@ -78,11 +83,12 @@ def run_live(cfg=config):
             equity = float(acc.get("equity", acc["balance"]))
 
             # ── Frenos FTMO: detienen el bot por completo (no solo el día) ──
-            if ftmo_cap and max_total and equity <= ftmo_cap * (1 - max_total):
+            # Solo si FTMO_AUTO_STOP está activo. Si no, el bot sigue corriendo.
+            if ftmo_auto_stop and ftmo_cap and max_total and equity <= ftmo_cap * (1 - max_total):
                 journal.event(f"[{stamp}] 🛑 FRENO TOTAL FTMO: equity ${equity:,.2f} "
                               f"tocó el límite (-{max_total*100:.0f}%). DETENIENDO el bot.")
                 break
-            if ftmo_cap and profit_target and equity >= ftmo_cap * (1 + profit_target):
+            if ftmo_auto_stop and ftmo_cap and profit_target and equity >= ftmo_cap * (1 + profit_target):
                 journal.event(f"[{stamp}] 🎯 OBJETIVO FTMO ALCANZADO: equity ${equity:,.2f} "
                               f"(+{profit_target*100:.0f}%). DETENIENDO el bot (fase superada).")
                 break
