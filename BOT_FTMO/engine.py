@@ -127,6 +127,7 @@ def simulate(cfg, times, highs, lows, closes, capital0=10000.0):
                     "time": times[i], "dir": pos["dir"], "entry": pos["entry"],
                     "exit": exit_price, "pnl": gross, "pips": pips, "reason": reason,
                     "bars": i - pos["entry_i"],
+                    "R": gross / pos["risk"] if pos["risk"] else 0.0,
                 })
                 pos = None
 
@@ -151,7 +152,8 @@ def simulate(cfg, times, highs, lows, closes, capital0=10000.0):
                         entry = sig["entry"] - half
                         units = -units
                     pos = {"dir": sig["dir"], "entry": entry, "entry_i": i,
-                           "sl": sig["sl"], "tp": sig["tp"], "units": units, "qf": qf}
+                           "sl": sig["sl"], "tp": sig["tp"], "units": units, "qf": qf,
+                           "risk": risk_amount}
         elif not pos and cfg.USE_CIRCUIT_BREAKER and day_blocked:
             if strat.signal_at(i, closes, ind):
                 blocked += 1
@@ -174,6 +176,7 @@ def simulate(cfg, times, highs, lows, closes, capital0=10000.0):
             "time": times[-1], "dir": pos["dir"], "entry": pos["entry"],
             "exit": exit_price, "pnl": gross, "pips": pips, "reason": "CIERRE_FINAL",
             "bars": (len(closes) - 1) - pos["entry_i"],
+            "R": gross / pos["risk"] if pos["risk"] else 0.0,
         })
 
     bars_per_day = getattr(cfg, "BARS_PER_DAY", 24)  # H1 = 24 velas/día

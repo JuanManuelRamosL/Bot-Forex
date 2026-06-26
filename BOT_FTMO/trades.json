@@ -1,0 +1,62 @@
+[
+  {
+    "fecha_utc": "2026-06-25 07:01:53",
+    "accion": "ABIERTA",
+    "instrumento": "EUR_USD",
+    "direccion": "LONG",
+    "lotes": 3.8,
+    "precio": 1.13529,
+    "sl": 1.13424,
+    "tp": 1.13845,
+    "riesgo_usd": 399.68,
+    "pnl": "",
+    "balance": 100000.0,
+    "ticket": 152249995901,
+    "motivo": "señal de entrada"
+  },
+  {
+    "fecha_utc": "2026-06-25 10:03:55",
+    "accion": "CERRADA",
+    "instrumento": "EUR_USD",
+    "direccion": "LONG",
+    "lotes": 3.8,
+    "precio": 1.13589,
+    "sl": "",
+    "tp": "",
+    "riesgo_usd": "",
+    "pnl": 129.2,
+    "balance": 100129.2,
+    "ticket": 152249995901,
+    "motivo": "SL/TP/trailing"
+  },
+  {
+    "fecha_utc": "2026-06-25 11:30:55",
+    "accion": "ABIERTA",
+    "instrumento": "EUR_USD",
+    "direccion": "LONG",
+    "lotes": 2.52,
+    "precio": 1.13374,
+    "sl": 1.13215,
+    "tp": 1.13851,
+    "riesgo_usd": 400.5,
+    "pnl": "",
+    "balance": 100129.2,
+    "ticket": 152251480473,
+    "motivo": "señal de entrada"
+  },
+  {
+    "fecha_utc": "2026-06-25 15:06:58",
+    "accion": "CERRADA",
+    "instrumento": "EUR_USD",
+    "direccion": "LONG",
+    "lotes": 2.52,
+    "precio": 1.13851,
+    "sl": "",
+    "tp": "",
+    "riesgo_usd": "",
+    "pnl": 1202.04,
+    "balance": 101331.24,
+    "ticket": 152251480473,
+    "motivo": "SL/TP/trailing"
+  }
+]
