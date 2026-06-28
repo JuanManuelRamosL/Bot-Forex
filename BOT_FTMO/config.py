@@ -57,7 +57,7 @@ SPREAD_PIPS = {
 DEFAULT_SPREAD_PIPS = 1.5
 
 # ─── Gestión de riesgo + reglas FTMO ──────────────────────────────
-RISK_PER_TRADE  = 0.007       # 0.7% del capital por operación (ajustado para FTMO)
+RISK_PER_TRADE  = 0.005       # 0.5% del capital por operación (ajustado para FTMO)
 MAX_OPEN_TRADES = 1
 
 USE_CIRCUIT_BREAKER  = True
