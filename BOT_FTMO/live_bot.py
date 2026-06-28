@@ -19,6 +19,10 @@ import config
 from mt5_client import MT5Client
 from engine import make_strategy
 import journal
+from telegram_notifier import (
+    TelegramNotifier, msg_inicio, msg_trade_abierto, msg_trade_cerrado,
+    msg_circuit_breaker, msg_objetivo_alcanzado, msg_freno_total, msg_error,
+)
 
 POLL_SECONDS = 300  # revisar el mercado cada 5 minutos
 
@@ -31,9 +35,14 @@ def run_live(cfg=config):
     poll = getattr(cfg, "POLL_SECONDS", POLL_SECONDS)
     journal.configure(getattr(cfg, "LOG_FILE", None), getattr(cfg, "TRADES_FILE", None))
     client = MT5Client(cfg.MT5_LOGIN, cfg.MT5_PASSWORD, cfg.MT5_SERVER)
-    strat = make_strategy(cfg)
+    strat  = make_strategy(cfg)
 
-    acc = client.get_account_summary()
+    # ── Telegram (opcional: solo si hay token y chat_id configurados) ──
+    tg_token   = getattr(cfg, "TELEGRAM_TOKEN",   "")
+    tg_chat_id = getattr(cfg, "TELEGRAM_CHAT_ID", "")
+    tg = TelegramNotifier(tg_token, tg_chat_id) if (tg_token and tg_chat_id) else None
+
+    acc     = client.get_account_summary()
     tp_mode = getattr(cfg, "TP_MODE", "mean")
     journal.event("=" * 60)
     journal.event(f"Bot iniciado. Conectado a MT5. Cuenta {acc['id']} | "
@@ -47,6 +56,10 @@ def run_live(cfg=config):
         journal.event(f"Filtro de régimen ACTIVO (ADX < {cfg.ADX_MAX})")
     if cfg.USE_CIRCUIT_BREAKER:
         journal.event(f"Circuit breaker ACTIVO (freno al perder {cfg.MAX_DAILY_LOSS*100:.0f}% diario)")
+
+    if tg:
+        tg.send(msg_inicio(acc["id"], float(acc["balance"]),
+                           cfg.RISK_PER_TRADE * 100, getattr(cfg, "TP_RR", 1.5)))
 
     # Posiciones ya abiertas al arrancar (para seguir su cierre y registrarlo)
     known = {}
@@ -85,12 +98,16 @@ def run_live(cfg=config):
             # ── Frenos FTMO: detienen el bot por completo (no solo el día) ──
             # Solo si FTMO_AUTO_STOP está activo. Si no, el bot sigue corriendo.
             if ftmo_auto_stop and ftmo_cap and max_total and equity <= ftmo_cap * (1 - max_total):
-                journal.event(f"[{stamp}] 🛑 FRENO TOTAL FTMO: equity ${equity:,.2f} "
-                              f"tocó el límite (-{max_total*100:.0f}%). DETENIENDO el bot.")
+                journal.event(f"[{stamp}] FRENO TOTAL FTMO: equity ${equity:,.2f} "
+                              f"toco el limite (-{max_total*100:.0f}%). DETENIENDO el bot.")
+                if tg:
+                    tg.send(msg_freno_total(equity, ftmo_cap))
                 break
             if ftmo_auto_stop and ftmo_cap and profit_target and equity >= ftmo_cap * (1 + profit_target):
-                journal.event(f"[{stamp}] 🎯 OBJETIVO FTMO ALCANZADO: equity ${equity:,.2f} "
+                journal.event(f"[{stamp}] OBJETIVO FTMO ALCANZADO: equity ${equity:,.2f} "
                               f"(+{profit_target*100:.0f}%). DETENIENDO el bot (fase superada).")
+                if tg:
+                    tg.send(msg_objetivo_alcanzado(equity, ftmo_cap))
                 break
 
             if today != current_day:
@@ -104,8 +121,11 @@ def run_live(cfg=config):
                 ref = ftmo_cap if ftmo_cap else day_start_equity
                 if (day_start_equity - equity) >= cfg.MAX_DAILY_LOSS * ref:
                     day_blocked = True
-                    journal.event(f"[{stamp}] CIRCUIT BREAKER activado: pérdida diaria > "
-                                  f"{cfg.MAX_DAILY_LOSS*100:.0f}%. No se abren más trades hoy.")
+                    perdida_dia = (day_start_equity - equity) / ref * 100
+                    journal.event(f"[{stamp}] CIRCUIT BREAKER activado: perdida diaria > "
+                                  f"{cfg.MAX_DAILY_LOSS*100:.0f}%. No se abren mas trades hoy.")
+                    if tg:
+                        tg.send(msg_circuit_breaker(perdida_dia, balance))
 
             need = max(cfg.BB_PERIOD, cfg.ATR_PERIOD, cfg.RSI_PERIOD,
                        2 * cfg.ADX_PERIOD + 1) + 50
@@ -137,7 +157,17 @@ def run_live(cfg=config):
                         "ticket": tid, "motivo": "SL/TP/trailing",
                     })
                     pnl_str = f"{pnl:+.2f}" if isinstance(pnl, (int, float)) else "?"
-                    journal.event(f"[{stamp}] CERRADA posición {tid} ({_dir_of(info)}) | PnL {pnl_str}")
+                    journal.event(f"[{stamp}] CERRADA posicion {tid} ({_dir_of(info)}) | PnL {pnl_str}")
+                    if tg:
+                        tg.send(msg_trade_cerrado(
+                            direccion=_dir_of(info),
+                            lotes=info.get("volume", "?"),
+                            entrada=info.get("entry", 0),
+                            salida=res["exit_price"] if res and res.get("exit_price") else "?",
+                            pnl=pnl if isinstance(pnl, (int, float)) else 0,
+                            balance=balance,
+                            motivo="SL/TP/trailing",
+                        ))
 
             if open_trades:
                 trade = open_trades[0]
@@ -194,6 +224,12 @@ def run_live(cfg=config):
                         journal.event(f"[{stamp}] ABIERTA {sig['dir']} {lots} lotes @ {sig['entry']:.5f} "
                                       f"| SL {sig['sl']:.5f} | TP {sig['tp']:.5f} "
                                       f"| riesgo ${real_risk:.2f} ({risk_pct:.1f}%)")
+                        if tg:
+                            tg.send(msg_trade_abierto(
+                                direccion=sig["dir"], lotes=lots,
+                                entrada=sig["entry"], sl=sig["sl"], tp=sig["tp"],
+                                riesgo_usd=real_risk, balance=balance,
+                            ))
                     else:
                         journal.event(f"[{stamp}] Señal {sig['dir']} pero lotes=0. Salteando.")
                 else:
@@ -204,9 +240,13 @@ def run_live(cfg=config):
 
         except KeyboardInterrupt:
             journal.event("Bot detenido por el usuario.")
+            if tg:
+                tg.send("⏹ <b>Bot detenido manualmente</b>\nHasta la proxima.")
             break
         except Exception as e:
             journal.event(f"[error] {e}  -- reintentando en {poll}s")
+            if tg:
+                tg.send(msg_error(str(e)))
 
         time.sleep(poll)
 

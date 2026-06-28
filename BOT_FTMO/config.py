@@ -61,7 +61,7 @@ RISK_PER_TRADE  = 0.007       # 0.7% del capital por operación (ajustado para F
 MAX_OPEN_TRADES = 1
 
 USE_CIRCUIT_BREAKER  = True
-FTMO_INITIAL_CAPITAL = 100000  # ← CAMBIÁ esto al tamaño REAL de tu cuenta FTMO
+FTMO_INITIAL_CAPITAL = 10000  # ← CAMBIÁ esto al tamaño REAL de tu cuenta FTMO
 MAX_DAILY_LOSS = 0.04         # freno propio a 4% diario  (FTMO elimina a 5%)
 MAX_TOTAL_LOSS = 0.08         # freno propio a 8% total   (FTMO elimina a 10%)
 PROFIT_TARGET  = 0.10         # parar al llegar a +10% (objetivo de la fase 1)
@@ -69,12 +69,17 @@ PROFIT_TARGET  = 0.10         # parar al llegar a +10% (objetivo de la fase 1)
 # Si está en False, el bot NO se apaga solo al tocar el objetivo (+10%) ni el
 # freno total (-8%): se enciende y queda corriendo hasta que lo frenes con Ctrl+C.
 # (El circuit breaker diario y los SL/TP de cada trade siguen funcionando igual.)
-FTMO_AUTO_STOP = False
+FTMO_AUTO_STOP = True   # detiene el bot al llegar al +10% (necesario para FTMO)
 
 # ─── Backtest ─────────────────────────────────────────────────────
 # 96 velas = 1 día. 24000 ≈ 1 año, 90000 ≈ 3.6 años (máximo disponible).
-BACKTEST_CANDLES = 1000
+BACKTEST_CANDLES = 300
 CAPITAL_INICIAL  = 10000
+
+# ─── Notificaciones Telegram ──────────────────────────────────────
+# Token del bot @Juanforexbot. Para obtener tu CHAT_ID: python get_chat_id.py
+TELEGRAM_TOKEN   = "8287464229:AAH3whKvLBfg6NmddFTuGFZ4Q4r46w1pESE"
+TELEGRAM_CHAT_ID = "2045946385"   # ← completar con tu chat_id (correr get_chat_id.py)
 
 # ─── Archivos de registro ─────────────────────────────────────────
 LOG_FILE    = "bot.log"
