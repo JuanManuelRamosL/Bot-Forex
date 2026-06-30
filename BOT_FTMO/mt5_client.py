@@ -7,6 +7,7 @@ Reemplaza a oanda_client.py. Requiere:
 """
 
 import math
+import time
 from datetime import datetime, timedelta
 import MetaTrader5 as mt5
 
@@ -46,12 +47,39 @@ def _filling_mode(info):
 
 class MT5Client:
     def __init__(self, login: int = 0, password: str = "", server: str = ""):
-        # Se conecta a la sesión ya abierta en MT5 (la app debe estar logueada).
-        if not mt5.initialize():
-            raise RuntimeError(f"No se pudo conectar a MT5: {mt5.last_error()}")
+        # Se conecta al terminal MT5 ya abierto. Primero intenta adjuntarse a la
+        # sesión activa; si falla (típico IPC timeout), reintenta forzando el login
+        # con las credenciales del config. Hasta 3 intentos.
+        # 1) Adjuntarse a la sesión ACTIVA del terminal (funciona aun en fin de
+        #    semana si la cuenta correcta ya está abierta en el MT5).
+        ok = mt5.initialize(timeout=15000)
+        # 2) Si la activa no conecta y hay credenciales, intentar forzar el login
+        #    (esto requiere que el servidor esté online: no funciona en fin de semana).
+        if not ok and login:
+            ok = mt5.initialize(login=int(login), password=password,
+                                server=server, timeout=15000)
+        last = mt5.last_error()
+        if not ok:
+            raise RuntimeError(
+                f"No se pudo conectar a MT5: {last}. "
+                f"Verificá que el terminal esté abierto, logueado en {server or 'tu cuenta'} "
+                f"y abierto SIN privilegios de administrador."
+            )
         info = mt5.account_info()
         if info is None:
             raise RuntimeError(f"Sin info de cuenta: {mt5.last_error()}")
+        # 3) Garantía de cuenta correcta: si el config pide una cuenta puntual y la
+        #    activa NO es esa, intentar cambiarla; si no se puede, ABORTAR (nunca
+        #    operar en la cuenta equivocada).
+        if login and int(login) != info.login:
+            mt5.initialize(login=int(login), password=password, server=server, timeout=15000)
+            info = mt5.account_info()
+            if info is None or int(login) != info.login:
+                raise RuntimeError(
+                    f"El MT5 está logueado en la cuenta {info.login if info else '?'} pero el "
+                    f"config espera {login}. Hacé doble clic en la cuenta {login} en el "
+                    f"Navigator del MT5 para activarla (o corregí MT5_LOGIN en config.py)."
+                )
 
     # ── Datos históricos ──────────────────────────────────────────────
 

@@ -45,7 +45,7 @@ ganaron — podés ignorarlos.
 - Opera EUR/USD en velas de 15 minutos.
 - Entra cuando el precio toca una banda de Bollinger + RSI confirma +
   mercado lateral (ADX < 30).
-- Objetivo 3:1 con trailing stop. Riesgo 0.4% por operación.
+- Objetivo 3:1 con trailing stop. Riesgo 0.5% por operación.
 - Frenos FTMO: para el día a -4%, para todo a -8%, y se detiene al +10%.
 - Registra todo en bot.log y trades.json.
 

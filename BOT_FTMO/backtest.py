@@ -71,7 +71,7 @@ def print_results(res, closes):
     if trades:
         print("\nÚltimas 10 operaciones:")
         print(f"{'Fecha':<22}{'Dir':<7}{'Entrada':<11}{'Salida':<11}{'P&L':<12}{'Pips':<8}{'Motivo'}")
-        for t in trades[-10:]:
+        for t in trades[-13:]:
             print(f"{t['time'][:19]:<22}{t['dir']:<7}{t['entry']:<11.5f}"
                   f"{t['exit']:<11.5f}${t['pnl']:<11.2f}{t['pips']:<8.1f}{t['reason']}")
 
