@@ -13,8 +13,8 @@ Todo está en este archivo (sin depender de otros configs). Editá lo que necesi
 
 # ─── Credenciales MetaTrader 5 ────────────────────────────────────
 # MT5 debe estar abierto y logueado en esta cuenta. NUNCA subas esto a GitHub.
-MT5_LOGIN    = 10011314164
-MT5_PASSWORD = "0xI!AxBm"
+MT5_LOGIN    = 5052108194
+MT5_PASSWORD = "Wh_d4kZe"
 MT5_SERVER   = "MetaQuotes-Demo"
 
 # ─── Mercado y temporalidad ───────────────────────────────────────
@@ -57,7 +57,7 @@ SPREAD_PIPS = {
 DEFAULT_SPREAD_PIPS = 1.5
 
 # ─── Gestión de riesgo + reglas FTMO ──────────────────────────────
-RISK_PER_TRADE  = 0.004       # 0.4% del capital por operación (ajustado para FTMO)
+RISK_PER_TRADE  = 0.007       # 0.7% del capital por operación (ajustado para FTMO)
 MAX_OPEN_TRADES = 1
 
 USE_CIRCUIT_BREAKER  = True
@@ -73,7 +73,7 @@ FTMO_AUTO_STOP = False
 
 # ─── Backtest ─────────────────────────────────────────────────────
 # 96 velas = 1 día. 24000 ≈ 1 año, 90000 ≈ 3.6 años (máximo disponible).
-BACKTEST_CANDLES = 3000
+BACKTEST_CANDLES = 1000
 CAPITAL_INICIAL  = 10000
 
 # ─── Archivos de registro ─────────────────────────────────────────
