@@ -177,7 +177,23 @@ class MeanReversionStrategy:
         adx_now = ind["adx"][i]
         if adx_now is None:
             return False  # sin dato de ADX, mejor no operar
-        return adx_now < self.cfg.ADX_MAX
+        if adx_now >= self.cfg.ADX_MAX:
+            return False
+
+        # Filtro de PLANITUD opcional (USE_FLAT_FILTER): además del ADX, exige que
+        # la media (SMA20) esté casi horizontal. Mide lateralidad más directo que el
+        # ADX (que es lagging). Si la media se mueve más de FLAT_MAX_SLOPE_ATR·ATR
+        # por vela, consideramos que hay tendencia y NO operamos.
+        if getattr(self.cfg, "USE_FLAT_FILTER", False):
+            k = getattr(self.cfg, "FLAT_LOOKBACK", 10)
+            mid = ind["mid"]
+            a = ind["atr"][i]
+            if i - k < 0 or mid[i] is None or mid[i - k] is None or not a:
+                return False
+            slope_per_bar = abs(mid[i] - mid[i - k]) / k
+            if slope_per_bar / a > getattr(self.cfg, "FLAT_MAX_SLOPE_ATR", 0.10):
+                return False
+        return True
 
     def _tp_for(self, direction, entry, mid, sl_dist):
         """Calcula el take-profit según el modo configurado."""

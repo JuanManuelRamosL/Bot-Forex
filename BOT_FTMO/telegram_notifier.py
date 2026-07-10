@@ -18,6 +18,7 @@ from datetime import datetime
 
 _PENDING_FILE = os.path.join(os.path.dirname(__file__), "pending_telegram.json")
 _API = "https://api.telegram.org/bot{}/sendMessage"
+_UPDATES_API = "https://api.telegram.org/bot{}/getUpdates"
 
 
 class TelegramNotifier:
@@ -84,6 +85,24 @@ class TelegramNotifier:
 
     def pending_count(self) -> int:
         return len(self._pending)
+
+    def get_updates(self, offset=None):
+        """
+        Trae mensajes nuevos escritos al bot desde el último 'offset' (el
+        update_id ya procesado + 1). Corto y sin bloquear (timeout=0): el bot
+        ya duerme entre ciclos, no hace falta long-polling.
+        Devuelve [] si no hay conexión o no hay nada nuevo.
+        """
+        try:
+            params = {"timeout": 0}
+            if offset is not None:
+                params["offset"] = offset
+            url = _UPDATES_API.format(self.token) + "?" + urllib.parse.urlencode(params)
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+                return data.get("result", []) if data.get("ok") else []
+        except Exception:
+            return []
 
 
 # ── Mensajes predefinidos ─────────────────────────────────────────

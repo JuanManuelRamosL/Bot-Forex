@@ -18,6 +18,9 @@ def make_strategy(cfg):
     if name == "smc":
         from strategy_smc import SMCStrategy
         return SMCStrategy(cfg)
+    if name == "inverse":
+        from strategy_inverse import InverseMeanReversionStrategy
+        return InverseMeanReversionStrategy(cfg)
     from strategy import MeanReversionStrategy
     return MeanReversionStrategy(cfg)
 

@@ -34,6 +34,62 @@ def _dir_of(trade):
     return "LONG" if float(trade["currentUnits"]) > 0 else "SHORT"
 
 
+def _handle_telegram_commands(tg, offset, client, cfg, state):
+    """
+    Lee mensajes nuevos escritos al bot y ejecuta comandos. Solo responde a
+    mensajes que vengan del chat configurado (TELEGRAM_CHAT_ID), ignora el resto.
+    Actualiza 'state' (dict: paused/stop) y devuelve el nuevo offset.
+    """
+    for upd in tg.get_updates(offset):
+        offset = upd["update_id"] + 1
+        msg = upd.get("message") or {}
+        chat_id = str(msg.get("chat", {}).get("id", ""))
+        if chat_id != tg.chat_id:
+            continue
+        text = (msg.get("text") or "").strip().lower().split("@")[0]
+
+        if text in ("/status", "/balance", "/estado"):
+            acc = client.get_account_summary()
+            trades = [t for t in client.get_open_trades() if t["instrument"] == cfg.INSTRUMENT]
+            if trades:
+                t = trades[0]
+                dir_ = "LONG" if float(t["currentUnits"]) > 0 else "SHORT"
+                pos_str = f"{dir_} @ {t['entry']:.5f}  (SL {t['sl']:.5f} / TP {t['tp']:.5f})"
+            else:
+                pos_str = "sin posición abierta"
+            estado_bot = "⏸ PAUSADO (sin abrir trades nuevos)" if state["paused"] else "▶️ operando normal"
+            tg.send(
+                f"📊 <b>Estado del bot</b>\n"
+                f"Balance: <b>${float(acc['balance']):,.2f}</b>\n"
+                f"Equity: <b>${float(acc['equity']):,.2f}</b>\n"
+                f"Posición: {pos_str}\n"
+                f"{estado_bot}"
+            )
+        elif text in ("/stop", "/parar", "/detener"):
+            state["stop"] = True
+            tg.send("⏹ Deteniendo el bot. Las posiciones abiertas NO se cierran, "
+                     "siguen protegidas por su SL/TP en el servidor de MT5.")
+        elif text in ("/pausar", "/pause"):
+            state["paused"] = True
+            tg.send("⏸ Pausado: no abro trades nuevos. Las posiciones abiertas siguen "
+                     "con su SL/TP/trailing normal. Mandá /reanudar para seguir operando.")
+        elif text in ("/reanudar", "/resume", "/continuar"):
+            state["paused"] = False
+            tg.send("▶️ Reanudado: vuelvo a operar señales nuevas.")
+        elif text in ("/ayuda", "/help", "/start"):
+            tg.send(
+                "<b>Comandos disponibles</b>\n"
+                "/status — balance, equity y posición abierta\n"
+                "/pausar — dejar de abrir trades nuevos (el bot sigue corriendo)\n"
+                "/reanudar — volver a operar tras un /pausar\n"
+                "/stop — detener el bot por completo\n"
+                "/ayuda — este mensaje"
+            )
+        else:
+            tg.send("No reconozco ese comando. Mandá /ayuda para ver la lista.")
+    return offset
+
+
 def _acquire_instance_lock(cfg):
     """Evita dos instancias del mismo bot operando la misma cuenta."""
     global _LOCK_HANDLE
@@ -66,6 +122,13 @@ def run_live(cfg=config):
     tg_token = getattr(cfg, "TELEGRAM_TOKEN", "")
     tg_chat_id = getattr(cfg, "TELEGRAM_CHAT_ID", "")
     tg = TelegramNotifier(tg_token, tg_chat_id) if (tg_token and tg_chat_id) else None
+    tg_state = {"paused": False, "stop": False}
+    tg_offset = None
+    if tg:
+        # Descarta mensajes viejos (evita ejecutar un /stop atrasado de antes de arrancar)
+        old_updates = tg.get_updates()
+        if old_updates:
+            tg_offset = old_updates[-1]["update_id"] + 1
 
     acc = client.get_account_summary()
     tp_mode = getattr(cfg, "TP_MODE", "mean")
@@ -117,6 +180,8 @@ def run_live(cfg=config):
     last_entry_bar = None
     last_close_bar = None
     last_close_ts = 0.0
+    dd_alert_pct = getattr(cfg, "DRAWDOWN_ALERT_PCT", None)  # punto de reevaluación
+    dd_alerted = False
 
     while True:
         try:
@@ -126,6 +191,13 @@ def run_live(cfg=config):
             acc = client.get_account_summary()
             balance = float(acc["balance"])
             equity = float(acc.get("equity", acc["balance"]))
+
+            # ── Comandos de Telegram (/status, /pausar, /reanudar, /stop) ──
+            if tg:
+                tg_offset = _handle_telegram_commands(tg, tg_offset, client, cfg, tg_state)
+                if tg_state["stop"]:
+                    journal.event(f"[{stamp}] Bot detenido remotamente vía Telegram (/stop).")
+                    break
 
             # ── Frenos FTMO: detienen el bot por completo (no solo el día) ──
             # Freno total = red de seguridad (FTMO_TOTAL_LOSS_STOP), independiente
@@ -142,6 +214,17 @@ def run_live(cfg=config):
                 if tg:
                     tg.send(msg_objetivo_alcanzado(equity, ftmo_cap))
                 break
+
+            # ── Alerta de reevaluación (una sola vez, no frena el bot) ──
+            if (tg and dd_alert_pct and ftmo_cap and not dd_alerted
+                    and equity <= ftmo_cap * (1 - dd_alert_pct)):
+                dd_alerted = True
+                dd_now = (ftmo_cap - equity) / ftmo_cap * 100
+                journal.event(f"[{stamp}] ALERTA drawdown -{dd_now:.1f}% (punto de reevaluación).")
+                tg.send(f"⚠️ <b>Alerta: drawdown -{dd_now:.1f}%</b>\n"
+                        f"Equity <b>${equity:,.2f}</b> (base ${ftmo_cap:,.0f}).\n"
+                        f"Llegaste al punto de reevaluación que fijamos. "
+                        f"Decidí si seguir o pausar el bot.")
 
             if today != current_day:
                 current_day = today
@@ -238,6 +321,8 @@ def run_live(cfg=config):
 
             elif cfg.USE_CIRCUIT_BREAKER and day_blocked:
                 journal.event(f"[{stamp}] Freno diario activo, sin abrir trades. Precio {price:.5f}")
+            elif tg_state["paused"]:
+                journal.event(f"[{stamp}] Pausado por Telegram, sin abrir trades. Precio {price:.5f}")
             else:
                 sig = strat.signal_at(i, closes, ind)
                 # ── Anti-sobreoperación (alinea el live con el backtest) ──
