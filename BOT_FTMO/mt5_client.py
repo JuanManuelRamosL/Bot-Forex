@@ -289,5 +289,10 @@ class MT5Client:
         }
         return mt5.order_send(request)
 
+    def close_trade_ok(self, ticket) -> bool:
+        """Cierra una posición y devuelve True solo si la orden se ejecutó bien."""
+        result = self.close_trade(ticket)
+        return bool(result) and result.retcode == mt5.TRADE_RETCODE_DONE
+
     def __del__(self):
         mt5.shutdown()

@@ -76,12 +76,28 @@ def _handle_telegram_commands(tg, offset, client, cfg, state):
         elif text in ("/reanudar", "/resume", "/continuar"):
             state["paused"] = False
             tg.send("▶️ Reanudado: vuelvo a operar señales nuevas.")
+        elif text in ("/cerrar", "/cerrar_todo", "/close", "/cerrar_operaciones"):
+            trades = [t for t in client.get_open_trades() if t["instrument"] == cfg.INSTRUMENT]
+            if not trades:
+                tg.send("No hay ninguna posición abierta para cerrar.")
+            else:
+                cerrados = []
+                for t in trades:
+                    if client.close_trade_ok(t["id"]):
+                        state["manual_close_ids"].add(t["id"])
+                        cerrados.append(t["id"])
+                if cerrados:
+                    tg.send(f"✋ Cerrando {len(cerrados)} posición(es) manualmente: "
+                            f"{', '.join(str(c) for c in cerrados)}. Te aviso cuando se confirme.")
+                else:
+                    tg.send("⚠️ No se pudo cerrar la posición. Revisá MT5.")
         elif text in ("/ayuda", "/help", "/start"):
             tg.send(
                 "<b>Comandos disponibles</b>\n"
                 "/status — balance, equity y posición abierta\n"
                 "/pausar — dejar de abrir trades nuevos (el bot sigue corriendo)\n"
                 "/reanudar — volver a operar tras un /pausar\n"
+                "/cerrar — cerrar la(s) posición(es) abierta(s) ahora mismo\n"
                 "/stop — detener el bot por completo\n"
                 "/ayuda — este mensaje"
             )
@@ -122,7 +138,7 @@ def run_live(cfg=config):
     tg_token = getattr(cfg, "TELEGRAM_TOKEN", "")
     tg_chat_id = getattr(cfg, "TELEGRAM_CHAT_ID", "")
     tg = TelegramNotifier(tg_token, tg_chat_id) if (tg_token and tg_chat_id) else None
-    tg_state = {"paused": False, "stop": False}
+    tg_state = {"paused": False, "stop": False, "manual_close_ids": set()}
     tg_offset = None
     if tg:
         # Descarta mensajes viejos (evita ejecutar un /stop atrasado de antes de arrancar)
@@ -265,15 +281,19 @@ def run_live(cfg=config):
                     res = client.get_deal_result(tid)
                     pnl = res["pnl"] if res else ""
                     exit_price = res["exit_price"] if res and res["exit_price"] else ""
+                    manual = tid in tg_state["manual_close_ids"]
+                    tg_state["manual_close_ids"].discard(tid)
+                    motivo = "CIERRE_MANUAL" if manual else "SL/TP/trailing"
                     journal.trade({
                         "accion": "CERRADA", "instrumento": cfg.INSTRUMENT,
                         "direccion": _dir_of(info), "lotes": info.get("volume", ""),
                         "precio": exit_price, "sl": "", "tp": "",
                         "riesgo_usd": "", "pnl": pnl, "balance": balance,
-                        "ticket": tid, "motivo": "SL/TP/trailing",
+                        "ticket": tid, "motivo": motivo,
                     })
                     pnl_str = f"{pnl:+.2f}" if isinstance(pnl, (int, float)) else "?"
-                    journal.event(f"[{stamp}] CERRADA posición {tid} ({_dir_of(info)}) | PnL {pnl_str}")
+                    journal.event(f"[{stamp}] CERRADA posición {tid} ({_dir_of(info)}) | PnL {pnl_str}"
+                                  + (" | manual vía Telegram" if manual else ""))
                     # Marca el cierre para el cooldown y el bloqueo por vela (evita
                     # reentrar a los minutos en la misma vela, como pasó el día 1).
                     last_close_ts = time.time()
@@ -286,7 +306,7 @@ def run_live(cfg=config):
                             salida=res["exit_price"] if res and res.get("exit_price") else "?",
                             pnl=pnl if isinstance(pnl, (int, float)) else 0,
                             balance=balance,
-                            motivo="SL/TP/trailing",
+                            motivo=motivo,
                         ))
 
             if open_trades:

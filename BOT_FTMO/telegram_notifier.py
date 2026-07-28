@@ -149,6 +149,7 @@ def msg_trade_cerrado(direccion, lotes, entrada, salida, pnl, balance, motivo):
         "TAKE_PROFIT":  "🎯 Take Profit",
         "SL/TP/trailing": "🎯 SL/TP/Trailing",
         "CIERRE_FINAL": "⏹ Cierre final",
+        "CIERRE_MANUAL": "✋ Cierre manual (Telegram)",
     }
     motivo_label = motivo_map.get(motivo, motivo)
 
