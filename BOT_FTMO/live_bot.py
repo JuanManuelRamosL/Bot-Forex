@@ -14,9 +14,16 @@ Uso:
 """
 
 import os
+import sys
 import time
 import msvcrt
 from datetime import datetime, timezone
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")  # evita UnicodeEncodeError en consolas cp1252
+except Exception:
+    pass
+
 import config
 from mt5_client import MT5Client
 from engine import make_strategy
@@ -369,10 +376,13 @@ def run_live(cfg=config):
                         )
                         last_entry_bar = bar_id   # esta vela ya operó
                         risk_pct = real_risk / balance * 100 if balance else 0
+                        precio_real = r.get("price")
                         journal.trade({
                             "accion": "ABIERTA", "instrumento": cfg.INSTRUMENT,
                             "direccion": sig["dir"], "lotes": lots,
-                            "precio": round(sig["entry"], 5), "sl": round(sig["sl"], 5),
+                            "precio": round(sig["entry"], 5),
+                            "precio_real": round(precio_real, 5) if precio_real else "",
+                            "sl": round(sig["sl"], 5),
                             "tp": round(sig["tp"], 5), "riesgo_usd": round(real_risk, 2),
                             "pnl": "", "balance": balance, "ticket": r.get("id", ""),
                             "motivo": "señal de entrada",

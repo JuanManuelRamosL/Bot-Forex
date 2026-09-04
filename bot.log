@@ -1,0 +1,14 @@
+[2026-08-02 22:20:29] ============================================================
+[2026-08-02 22:20:29] Bot iniciado. Conectado a MT5. Cuenta 521088585 | Balance 9511.5 USD
+[2026-08-02 22:20:29] Operando EUR_USD en H1 | Riesgo 1% | TP=rr (R:R 3.0)
+[2026-08-02 22:20:29] Trailing stop ACTIVO (ATR x 2.0)
+[2026-08-02 22:20:29] Filtro de régimen ACTIVO (ADX < 30)
+[2026-08-02 22:20:29] Circuit breaker ACTIVO (freno al perder 3% diario)
+[2026-08-02 22:20:29] [19:20:29] Sin señal. Precio 1.15466  RSI 65  ADX 23
+[2026-08-14 00:13:08] ============================================================
+[2026-08-14 00:13:08] Bot iniciado. Conectado a MT5. Cuenta 521088585 | Balance 9639.26 USD
+[2026-08-14 00:13:08] Operando EUR_USD en H1 | Riesgo 1% | TP=rr (R:R 3.0)
+[2026-08-14 00:13:08] Trailing stop ACTIVO (ATR x 2.0)
+[2026-08-14 00:13:08] Filtro de régimen ACTIVO (ADX < 30)
+[2026-08-14 00:13:08] Circuit breaker ACTIVO (freno al perder 3% diario)
+[2026-08-14 00:13:08] [21:13:08] Sin señal. Precio 1.15337  RSI 53  ADX 14

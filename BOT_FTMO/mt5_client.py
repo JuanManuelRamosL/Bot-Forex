@@ -224,7 +224,7 @@ class MT5Client:
             err = result.comment if result else str(mt5.last_error())
             code = getattr(result, "retcode", "?")
             raise RuntimeError(f"Orden fallida (retcode={code}): {err}")
-        return {"id": result.order}
+        return {"id": result.order, "price": result.price}
 
     def modify_stop_loss(self, ticket, new_sl, take_profit=None):
         """Mueve el stop-loss de una posición abierta (para el trailing stop)."""
